@@ -10,6 +10,7 @@ notifications:
   email:
     - eugene.burmako@epfl.ch
     - denys.shabalin@typesafe.com
+    - vladimir.nikolaev9@gmail.com
 env:
   global:
    - SCALAREFLECT_MAVEN_REALM="Sonatype Nexus Repository Manager"
