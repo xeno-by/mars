@@ -192,10 +192,8 @@ trait ContextFactory {
         case apply @ Apply(fun, args) =>
           //TODO fix tree in context
           contexted(fun) // fix for args
-          fun match {
-            case Select(_, name) if name.toString() == "runtimeMacro" =>
-              applyContextInfo = Option(apply, context)
-            case _ =>
+          if (isRuntimeMacro(apply)) {
+            applyContextInfo = Option(apply, context)
           }
 
         case tree: This => // context shouldn't be changed

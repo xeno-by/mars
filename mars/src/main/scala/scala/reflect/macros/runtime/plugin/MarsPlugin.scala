@@ -34,14 +34,11 @@ class MarsPlugin(val global: Global) extends Plugin {
 
     override val runsAfter = List("typer")
 
-    val phaseName = "marsPhase"
+    val phaseName = "mars"
 
     override def newPhase(prev: Phase): StdPhase = new StdPhase(prev) {
       override def apply(compUnit: CompilationUnit) {
         try {
-          //process only .scala files
-          val fileName = compUnit.source.file.name
-          if (fileName.endsWith(".scala")) {
             println(sm"""
             |=================================================
             |=============== Context Creator =================  
@@ -50,24 +47,23 @@ class MarsPlugin(val global: Global) extends Plugin {
             |unit: $compUnit""")
             
             val contextFactory = new ContextFactory {
-              val global = MarsComponent.this.global
+              val global: MarsComponent.this.global.type = MarsComponent.this.global
             } 
             
             import contextFactory.{global => compiler, _}
             import compiler.analyzer.Context
             
-            val tree = compUnit.body.asInstanceOf[compiler.Tree]
-            val initialContext = analyzer.rootContext(compUnit, EmptyTree, false).asInstanceOf[Context]
+            val unitTree = compUnit.body
+            val initialContext = analyzer.rootContext(compUnit, EmptyTree, false)
             
-            ContextCreator(initialContext).contexted(tree)
+            ContextCreator(initialContext).contexted(unitTree)
             val contextInfo = applyContextInfo
             if (contextInfo.nonEmpty) {
               val (applyTree, resultedContext) = contextInfo.get
               val untypedInjectTree = q"""println("Hello: " + a)"""
-              val typechecker = global.analyzer.newTyper(resultedContext.asInstanceOf[global.analyzer.Context])
-              val typedInjectTree = typechecker.typed(untypedInjectTree).asInstanceOf[compiler.Tree]
-              val unitTree = compUnit.body.asInstanceOf[compiler.Tree]
-              val transformedTree = RuntimeMacroInjector(unitTree, typedInjectTree).expandMacroTree.asInstanceOf[Tree]
+              val typechecker = global.analyzer.newTyper(resultedContext)
+              val typedInjectTree = typechecker.typed(untypedInjectTree)
+              val transformedTree = RuntimeMacroInjector(unitTree, typedInjectTree).expandMacroTree
               
               println(sm"""
               |applyTree: ${showRaw(applyTree)}
@@ -87,11 +83,7 @@ class MarsPlugin(val global: Global) extends Plugin {
             } else {
               println("\n===> tree is not found!!!\n")
             }
-            //mode we should get from typer
-            //global.analyzer.macroExpand(null, null, c.contextMode , null)
             println("=================================================")
-          } else
-            println("File " + fileName + " is not processed")
           } catch {
             case e: Exception =>
               e.printStackTrace()
