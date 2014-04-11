@@ -1,0 +1,4 @@
+<plugin>
+  <name>marsPlugin</name>
+  <classname>scala.reflect.macros.runtime.plugin.MarsPlugin</classname>
+</plugin>
