@@ -113,17 +113,29 @@ object build extends Build {
     base = file("mars")
   ) settings (
     publishableSettings: _*
+    //sharedSettings: _*
   ) settings (
     // TODO: this dependency is temporary, just until we have reflection core ready
-    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
+    libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _),
     scalacOptions ++= Seq()
+  )
+
+  // Scalac command line options to install our compiler plugin.
+  lazy val usePluginSettings = Seq(
+    scalacOptions in Compile <++= (Keys.`package` in (mars, Compile)) map { (jar: File) =>
+       val addPlugin = "-Xplugin:" + jar.getAbsolutePath
+       // add plugin timestamp to compiler options to trigger recompile of
+       // main after editing the plugin. (Otherwise a 'clean' is needed.)
+       val dummy = "-Jdummy=" + jar.lastModified
+       Seq(addPlugin, dummy)
+    }
   )
 
   lazy val sandbox = Project(
     id   = "sandbox",
     base = file("sandbox")
   ) settings (
-    sharedSettings: _*
+    sharedSettings ++ usePluginSettings: _*
   ) settings (
     scalacOptions ++= Seq()
   ) dependsOn (mars)
