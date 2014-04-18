@@ -3,7 +3,7 @@ import Keys._
 
 object build extends Build {
   lazy val sharedSettings = Defaults.defaultSettings ++ Seq(
-    scalaVersion := "2.11.0-RC3",
+    scalaVersion := "2.11.0",
     crossVersion := CrossVersion.full,
     version := "0.1.0-SNAPSHOT",
     organization := "org.scalareflect",
@@ -146,7 +146,7 @@ object build extends Build {
   ) settings (
     sharedSettings: _*
   ) settings (
-    libraryDependencies += "org.scalatest" %% "scalatest" % "2.1.0" % "test",
+    libraryDependencies += "org.scalatest" %% "scalatest" % "2.1.3" % "test",
     libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.11.3" % "test",
     scalacOptions ++= Seq()
   ) dependsOn (mars)
