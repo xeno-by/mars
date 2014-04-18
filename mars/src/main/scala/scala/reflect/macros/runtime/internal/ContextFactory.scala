@@ -258,9 +258,10 @@ trait ContextFactory {
         case select @ Select(qual, _) => contexted(qual)
 
         case apply @ Apply(fun, args) =>
-          // TODO: fix tree in context
-          contexted(fun) // fix for args
-          // TODO: add args processing
+          // TODO: fix tree in context and args processing
+
+          args foreach (contexted(_))
+          contexted(fun)
           if (isRuntimeMacro(apply)) {
             applyContextInfo = Option(apply, context)
           }
