@@ -153,6 +153,58 @@ trait ContextFactory {
       contextedStats(block0.stats, context.owner)
       contexted(block0.expr)
     }
+    
+    def contextedIf(if0: If) = {
+      contexted(if0.thenp) // then part
+      contexted(if0.elsep) // else part
+    }
+    
+    def contextedTypeApply(tree: TypeApply) = {
+      val TypeApply(fun, args) = tree
+
+      contexted(fun)
+      val tparams = fun.symbol.typeParams
+
+      args foreach (contexted(_))
+    }
+    
+    def functionContext(fun: Function) = {
+      ContextCreator(context.makeNewScope(fun, fun.symbol)).contextedFunction(fun)
+    }
+    
+    def contextedFunction(fun: Function) = {
+      /* probably cases when fun.body is samViable or Match(sel, cases) is not necessary 
+       * for processing, tree should be already transformed
+       */
+      // regular Function
+      fun.vparams foreach { vparam =>
+        // enterSym(context, vparam) - enter sym to namer
+        if (context.retyping) context.scope enter vparam.symbol
+      }
+      fun.vparams mapConserve contextedValDef // process vparams
+      contexted(fun.body) // process body
+    }
+
+    def contextedAssign(assign: Assign) = {
+      val Assign(lhs, rhs) = assign
+      contexted(lhs)
+      contexted(rhs)
+    }
+
+    def contextedArrayValue(tree: ArrayValue) = {
+      val ArrayValue(elemtpt, elems) = tree
+      contexted(elemtpt)
+      tree.elems mapConserve (contexted(_))
+    }
+
+    def labelContextCreator(ldef: LabelDef) = {
+      val labelContext = if (ldef.symbol == NoSymbol) { // shouldn't be required for mars
+        ContextCreator(context.makeNewScope(ldef, context.owner))
+      } else this
+      labelContext.contextedLabelDef(ldef)
+    }
+
+    def contextedLabelDef(ldef: LabelDef) = contexted(ldef.rhs)
 
     // return context resulted from tree processing
     def contexted(tree: Tree): Context = {
@@ -180,6 +232,22 @@ trait ContextFactory {
         case tree: ValDef => contextedValDef(tree)
 
         case tree: DefDef => defDefContextCreator(tree).contextedDefDef(tree)
+        
+        case ifTree: If => contextedIf(ifTree)
+        
+        case typeApply: TypeApply => contextedTypeApply(typeApply)
+        
+        case fun: Function => functionContext(fun)
+        
+        case assign: Assign => contextedAssign(assign)
+        
+        case Annotated(fun, _) => contexted(fun) // should be sufficient for runtime macro expansion
+        
+        case tree: ArrayValue => contextedArrayValue(tree)
+        
+        case tree: ReferenceToBoxed => contexted(tree.ident)
+        
+        case ld: LabelDef => contextedLabelDef(ld)
 
         case tree: Block =>
           val blockContext = context.makeNewScope(tree, context.owner)
@@ -190,19 +258,23 @@ trait ContextFactory {
         case select @ Select(qual, _) => contexted(qual)
 
         case apply @ Apply(fun, args) =>
-          //TODO fix tree in context
-          contexted(fun) // fix for args
+          // TODO: fix tree in context and args processing
+
+          args foreach (contexted(_))
+          contexted(fun)
           if (isRuntimeMacro(apply)) {
             applyContextInfo = Option(apply, context)
           }
 
-        case tree: This => // context shouldn't be changed
+        case typed: Typed => contexted(typed.expr)  
 
-        case tree: Literal => // context shouldn't be changed
-
-        case tree: Ident => // context shouldn't be changed
-
-        case _ => // TODO: add processing for other trees
+        case _: New | _: This | _: Literal | _: Ident => // context shouldn't be changed
+ 
+        /* TODO: add processing for other trees (if required):
+         * from typedInPatternMode (Alternative, Star) + Bind
+         * from typedTypTree (subtrees of TypTree)
+         */
+        case _ =>
       }
       printScopeInfo(tree)
       context
